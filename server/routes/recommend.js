@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.sk-bb4d6aa5900c468996797aa52ce1e6fc,
 });
 
 async function routes(fastify, options) {
