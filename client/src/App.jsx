@@ -1,52 +1,89 @@
 import { useState } from "react";
-import Recommendations from "./components/Recommendations";
-import "./App.css";
+import movies from "./data/movies.json";
 
 function App() {
   const [input, setInput] = useState("");
-  const [movies, setMovies] = useState([]);
+  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const getRecommendations = async () => {
+  const extractGenres = (movie) => {
+    try {
+      const parsed = JSON.parse(movie.genres);
+      return parsed.map(g => g.name.toLowerCase());
+    } catch {
+      return [];
+    }
+  };
+
+  const recommendMovies = () => {
     if (!input.trim()) return;
 
     setLoading(true);
+    setResults([]);
 
-    const res = await fetch("http://localhost:5000/recommend", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_input: input }),
-    });
+    setTimeout(() => {
+      const keyword = input.toLowerCase();
 
-    const data = await res.json();
-    setMovies(data.recommendations);
-    setLoading(false);
+      const selectedMovie = movies.find(m =>
+        m.title.toLowerCase().includes(keyword)
+      );
+
+      let recommendations = [];
+
+      if (selectedMovie) {
+        const baseGenres = extractGenres(selectedMovie);
+
+        recommendations = movies.filter(m => {
+          if (m.id === selectedMovie.id) return false;
+          const genres = extractGenres(m);
+          return genres.some(g => baseGenres.includes(g));
+        });
+      } else {
+        recommendations = movies.filter(m => {
+          const genres = extractGenres(m);
+          return genres.some(g => g.includes(keyword));
+        });
+      }
+
+      if (recommendations.length === 0) {
+        recommendations = movies.slice(0, 5);
+      }
+
+      setResults(recommendations.slice(0, 5));
+      setLoading(false);
+    }, 1200);
   };
 
   return (
-    <div className="app">
-      <div className="card">
-        <h1 className="title">🎬 Movie Recommendation</h1>
-        <p className="subtitle">
-          Tell us what you feel like watching and we’ll suggest movies
+    <div className="container">
+      <h1>🎬 Movie Recommendation System</h1>
+
+      <input
+        placeholder="Search movie or genre (e.g. Avatar, Documentary)"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      />
+
+      <button onClick={recommendMovies} disabled={loading}>
+        {loading ? "Analyzing preferences..." : "Recommend"}
+      </button>
+
+      {loading && (
+        <p className="loading-text">
+          🤖 AI is finding similar movies...
         </p>
+      )}
 
-        <div className="input-group">
-          <input
-            placeholder="e.g. action movies with strong female lead"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
+      <ul>
+        {!loading &&
+          results.map((movie, index) => (
+            <li key={index}>{movie.title}</li>
+          ))}
+      </ul>
 
-          <button onClick={getRecommendations} disabled={loading}>
-            {loading ? "Finding..." : "Recommend"}
-          </button>
-        </div>
-
-        {loading && <div className="loader"></div>}
-
-        <Recommendations movies={movies} />
-      </div>
+      <p className="footer-text">
+        Recommendations generated using content-based filtering
+      </p>
     </div>
   );
 }
